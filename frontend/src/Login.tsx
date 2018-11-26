@@ -3,13 +3,16 @@ import { Form, Input, Button, FormGroup } from "reactstrap";
 import axios from "axios";
 import { User } from "./models";
 import { FormContainer } from "./FormContainer";
+import { authenticate } from "./api";
+import LogRocket from "logrocket";
 
 interface LoginFormProps {
-  handleLogin: (user: User | null | undefined) => any;
+  updateUser: (user: User | null | undefined) => any;
 }
 
 interface LoginFormState {
   code: string;
+  valid: boolean;
 }
 
 export class LoginForm extends React.PureComponent<
@@ -17,16 +20,21 @@ export class LoginForm extends React.PureComponent<
   LoginFormState
 > {
   public state = {
-    code: ""
+    code: "",
+    valid: true
   };
 
   public onLogin = async (code: string) => {
-    const response = await axios.get<User>(
-      "http://localhost:7071/api/authenticate",
-      { params: { code } }
-    );
+    const response = await authenticate(code);
     if (response.status === 200) {
-      this.props.handleLogin(response.data);
+      window.localStorage.setItem("code", code);
+      const user = response.data;
+      this.props.updateUser(user);
+      LogRocket.identify(user.code.toString(), {
+        name: user.name
+      });
+    } else {
+      this.setState({ valid: false });
     }
   };
 
@@ -41,6 +49,7 @@ export class LoginForm extends React.PureComponent<
         >
           <FormGroup>
             <Input
+              invalid={!this.state.valid}
               type="text"
               placeholder="Access Code"
               value={this.state.code}

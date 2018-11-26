@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using backend.models;
 using System.Linq;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace backend
 {
@@ -18,25 +19,17 @@ namespace backend
     [FunctionName("Authenticate")]
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Function, "get", Route = "authenticate")] HttpRequest req,
-        ILogger log)
+        ILogger log,
+        [Table("users")] CloudTable userTable)
     {
-      log.LogInformation("C# HTTP trigger function processed a request.");
+      string accessCode = req.Query["accessCode"];
+      var user = await userTable.GetUser(accessCode);
 
-      string code = req.Query["code"];
-      var users = RetrieveUsers();
-      User currentUser = users.GetUserByCode(code);
-      if (currentUser != null)
+      if (user != null)
       {
-        return new OkObjectResult(currentUser);
+        return new OkObjectResult(user);
       }
       return new BadRequestResult();
-    }
-
-    public static List<User> Users { get; set; }
-
-    public static List<User> RetrieveUsers()
-    {
-      return Users;
     }
   }
 }

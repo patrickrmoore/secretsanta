@@ -1,20 +1,32 @@
 using System;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace backend.models
 {
-  public class User
+  public class User : TableEntity
   {
-    public string PartitionKey { get; set; } = "Test1";
-    public string RowKey
+    public User()
     {
-      get { return this.code.ToString(); }
+      PartitionKey = System.Environment.GetEnvironmentVariable("PartitionKey");
     }
-    public string id { get; set; }
-    public int code { get; set; }
+    private int _code;
+    public int code
+    {
+      get
+      {
+        return _code;
+      }
+      set
+      {
+        _code = value;
+        RowKey = value.ToString();
+      }
+    }
     public string name { get; set; }
     public string email { get; set; }
     public string address { get; set; }
     public string givingToId { get; set; }
     public string receivingFromId { get; set; }
+    public string phone { get; set; }
   }
 }

@@ -3,40 +3,42 @@ import { Form, Input, Button, FormGroup, Row, Col } from "reactstrap";
 import axios from "axios";
 import { User } from "./models";
 import { FormContainer } from "./FormContainer";
+import { updateUser } from "./api";
 
 interface AddressFormProps {
-  handleAddress: (user: User | null | undefined) => any;
-  user?: User;
+  updateUser: (user: User | null | undefined) => any;
+  user: User;
 }
 
-interface AddressFormState {
-  address: string;
-  address2: string;
-  city: string;
-  state: string;
-  zip: string;
-}
+const initialState = {
+  address: "",
+  address2: "",
+  city: "",
+  state: "",
+  zip: ""
+};
+
+type AddressFormState = Readonly<typeof initialState>;
 
 export class AddressForm extends React.PureComponent<
   AddressFormProps,
   AddressFormState
 > {
-  public state = {
-    address: "",
-    address2: "",
-    city: "",
-    state: "",
-    zip: ""
-  };
+  readonly state: AddressFormState = initialState;
 
   public onAddressSubmit = async () => {
-    const response = await axios.post<User>(
-      "http://localhost:7071/api/SetAddress",
-      { ...this.state },
-      { params: { code: this.props.user!.code } }
-    );
+    const { user } = this.props;
+    const state = this.state;
+
+    const newUser = {
+      ...user,
+      address: `${state.address},\n${
+        state.address2 ? state.address2 + ",\n" : ""
+      }${state.city}, ${state.state} ${state.zip}`
+    };
+    const response = await updateUser(newUser);
     if (response.status === 200) {
-      this.props.handleAddress(response.data);
+      this.props.updateUser(response.data);
     }
   };
 
@@ -44,7 +46,7 @@ export class AddressForm extends React.PureComponent<
     return (
       <FormContainer>
         <p>
-          Hi {this.props.user!.name}, set your address to see who your secret
+          Hi {this.props.user.name}, set your address to see who your secret
           santa match is.
         </p>
         <Form

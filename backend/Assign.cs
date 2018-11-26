@@ -10,6 +10,7 @@ using Newtonsoft.Json;
 using System.Collections.Generic;
 using backend.models;
 using System.Linq;
+using Microsoft.WindowsAzure.Storage.Table;
 
 namespace backend
 {
@@ -19,15 +20,18 @@ namespace backend
     public static async Task<IActionResult> Run(
         [HttpTrigger(AuthorizationLevel.Function, "get", "post", Route = "assign")] HttpRequest req,
         ILogger log,
-        [Table("participants", Connection = "AzureWebJobsStorage")] IAsyncCollector<User> userTable)
+        [Table("users")] CloudTable userTable,
+        [Queue("texts-to-send", Connection = "AzureWebJobsStorage")] ICollector<TextMessage> queueCollector)
     {
-      var participants = AssignUsers();
-      Authenticate.Users = participants;
-      // participants.ForEach(async participant =>
-      // {
-      //   await userTable.AddAsync(participant);
-      // });
-      return new OkObjectResult(participants);
+      var users = AssignUsers();
+      await userTable.InsertUsers(users);
+
+      users.ForEach(user =>
+      {
+        queueCollector.Add(new TextMessage { To = user.phone, Message = $"Hi {user.name}, visit https://secretsantafe.z21.web.core.windows.net/ to see who you are the Secret Santa for.\n\nYour access code is {user.code}" });
+      });
+
+      return new OkObjectResult(users);
     }
 
     public static List<User> AssignUsers()
@@ -40,25 +44,25 @@ namespace backend
         participants[i].code = accessCodes[i];
       }
 
-      participants = participants.OrderBy(p => p.id).ToList();
+      participants = participants.OrderBy(p => p.code).ToList();
 
       for (int i = 0; i < participants.Count; i++)
       {
         if (i == 0)
         {
-          participants[i].givingToId = participants[i + 1].name;
-          participants[i].receivingFromId = participants[participants.Count - 1].name;
+          participants[i].givingToId = participants[i + 1].code.ToString();
+          participants[i].receivingFromId = participants[participants.Count - 1].code.ToString();
 
         }
         else if (i != participants.Count - 1)
         {
-          participants[i].givingToId = participants[i + 1].name;
-          participants[i].receivingFromId = participants[i - 1].name;
+          participants[i].givingToId = participants[i + 1].code.ToString();
+          participants[i].receivingFromId = participants[i - 1].code.ToString();
         }
         else
         {
-          participants[i].givingToId = participants[0].name;
-          participants[i].receivingFromId = participants[i - 1].name;
+          participants[i].givingToId = participants[0].code.ToString();
+          participants[i].receivingFromId = participants[i - 1].code.ToString();
         }
 
       }
@@ -84,11 +88,18 @@ namespace backend
     {
       return new List<User>
             {
-                new User {name="Patrick", id = Guid.NewGuid().ToString()},
-                new User {name="Elise", id = Guid.NewGuid().ToString()},
-                new User {name="Andrew", id = Guid.NewGuid().ToString()},
-                new User {name="Travis", id = Guid.NewGuid().ToString()},
-                new User {name="Ashley", id = Guid.NewGuid().ToString()}
+                new User {name="Clay",    phone="+12544241976"},
+                new User {name="Trey",    phone="+12547235364"},
+                new User {name="Rustin",  phone="+12548555282"},
+                new User {name="Adam",    phone="+18172476941"},
+                new User {name="Todd",    phone="+12544981119"},
+                new User {name="Scott",   phone="+12546525394"},
+                new User {name="Anthony", phone="+12543661114"},
+                new User {name="Hunter",  phone="+12543157266"},
+                new User {name="Michael", phone="+12546447796"},
+                new User {name="Blake",   phone="+12547227040"},
+                new User {name="Zach",    phone="+12544247505"},
+                new User {name="Patrick", phone="+12547444274"}
             };
     }
   }
